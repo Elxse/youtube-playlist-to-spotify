@@ -14,8 +14,13 @@ import youtube_dl
 
 from secrets import spotify_token, spotify_user_id
 
-class PlayList:
+class Playlist:
     def __init__(self, spotify_playlist_name, youtube_playlist_name):
+        self.request_header_fields = {
+            "Authorization": "Bearer {}".format(spotify_token),    
+            "Content-Type": "application/json" 
+        }
+
         self.spotify_user_id = spotify_user_id
         self.spotify_token = spotify_token
         self.spotify_playlist_name = spotify_playlist_name
@@ -25,9 +30,13 @@ class PlayList:
         self.youtube_playlist_name = youtube_playlist_name
         self.youtube_playlist_id = self.getYoutubePlaylistID()
 
-        self.n_songs = 0
-        self.all_song_info = {}
+        self.songs_info = self.getYoutubeVideos()
+        self.songs_uris = self.getAllUris()    
+    
 
+    ########################
+    # ------ YOUTUBE ------
+    ########################
     def getYoutubeClient(self):
         """Log into YouTube."""
 
@@ -77,7 +86,8 @@ class PlayList:
             maxResults=25
         )
         response = request.execute()
-
+        
+        songs_info = {}
         for item in response["items"]:
             video_title = item["snippet"]["title"]
             youtube_url = "https://www.youtube.com/watch?v={}".format(item["snippet"]["resourceId"]["videoId"])
@@ -85,30 +95,108 @@ class PlayList:
             # Use youtube_dl to collect the song name and artist name
             video = youtube_dl.YoutubeDL({}).extract_info(youtube_url, download=False)
             song_name = video["track"]
-            print(song_name)
             artist = video["artist"]
 
             # Save all important information
             if song_name is not None and artist is not None:
                 spotify_uri = self.getSpotifyUri(song_name, artist) # add the uri, easy to get song to put into playlist
                 if(spotify_uri != 0):
-                    self.all_song_info[video_title] = {
+                    songs_info[video_title] = {
                         "youtube_url": youtube_url,
                         "song_name": song_name,
                         "artist": artist,
                         "spotify_uri": spotify_uri
                     }
-        
+        return songs_info
+    
+    #######################
+    # ------ TRACKS ------
+    #######################
+    def getSpotifyUri(self, song_name, artist):
+        # Query parameters
+            # q : query keywords
+            # type : item types to search across
+            # limit : maximum number of results to return
+            # offset : the index of the first result to return
+        query = "https://api.spotify.com/v1/search?q=track:{0}+artist:{1}&type=track&limit=20&offset=0".format(song_name, artist)
+
+        # Response
+        response = requests.get(
+            query,
+            headers=self.request_header_fields
+        )
+        response_json = response.json()
+        songs = response_json["tracks"]["items"]
+
+        # Only return the uri of the first song
+        uri = 0
+        if(len(songs) != 0):
+            uri = songs[0]["uri"]
+        return uri
+
+    def getAllUris(self):
+        uris = [info["spotify_uri"] for _, info in self.songs_info.items()]
+        return uris
+
+    ################################
+    # ------ CREATE PLAYLIST ------
+    ################################
+    def createPlaylist(self):
+        """Create a new playlist and return its spotify id."""
+
+        # Request path (user's spotify UID)
+        query = "https://api.spotify.com/v1/users/{}/playlists".format(self.spotify_user_id)
+
+        # Convert Python to JSON (object to send to the server, we can also use the arg "json")
+        request_body = json.dumps({
+            "name": self.spotify_playlist_name,
+            "description": "music discoveries in youtube",
+            "public": True
+        })
+
+        # Response 
+        response = requests.post(
+            query,
+            data=request_body,                                  
+            headers=self.request_header_fields
+        )
+
+        # Convert the JSON response into a python dictionnary 
+        response_json = response.json()
+        return response_json["id"]
+
+    def addTracks(self):
+        query = "https://api.spotify.com/v1/playlists/{}/tracks".format(self.spotify_playlist_id)
+
+        # Request body with the list of all songs uri
+        request_body = json.dumps(self.songs_uris)
+
+        response = requests.post(
+            query,
+            data=request_body,
+            headers=self.request_header_fields
+        )
+        if(not response.ok):
+            print(response.reason)
+        return response.ok
+
+    def create(self):
+        """Create a new playlist and add songs from the youtube playlist."""
+
+        self.spotify_playlist_id = self.createPlaylist()
+        ok = self.addTracks()
+        if ok:
+            print("Creation done!")
+
+    ################################
+    # ------ UPDATE PLAYLIST ------
+    ################################
     def getSpotifyPlaylistId(self):
         query = "https://api.spotify.com/v1/users/{}/playlists".format(self.spotify_user_id)
-        header_fields = {
-            "Authorization": "Bearer {}".format(self.spotify_token),
-            "Content-Type": "application/json"
-        }
 
         response = requests.get(
             query,
-            headers=header_fields
+            headers=self.request_header_fields
         )
 
         response_json = response.json()
@@ -123,103 +211,23 @@ class PlayList:
 
         return playlist_id
 
-    def getSpotifyUri(self, song_name, artist):
-
-        # Header field
-        header_fields = {
-            "Authorization": "Bearer {}".format(self.spotify_token),    
-            "Content-Type": "application/json" 
-        }
-
-        # Query parameters
-            # q : query keywords
-            # type : item types to search across
-            # limit : maximum number of results to return
-            # offset : the index of the first result to return
-        query = "https://api.spotify.com/v1/search?q=track:{0}+artist:{1}&type=track&limit=20&offset=0".format(song_name, artist)
-
-        # Response
-        response = requests.get(
+    def replaceTracks(self):
+        query = "https://api.spotify.com/v1/playlists/{0}/tracks?uris={1}".format(self.spotify_playlist_id, ",".join(self.songs_uris))
+        response = requests.put(
             query,
-            headers=header_fields
+            headers=self.request_header_fields
         )
-        response_json = response.json()
-        songs = response_json["tracks"]["items"]
+        if(not response.ok):
+            print(response.reason)
+        return response.ok
 
-        # Only return the uri of the first song
-        uri = 0
-        if(len(songs) != 0):
-            uri = songs[0]["uri"]
-        return uri
+    def update(self):
+        """Updates spotify playlist with songs from the youtube playlist."""
 
-    def addTrackToPlaylist(self):
-        # Populate our songs dictionary
-        self.getYoutubeVideos()
-
-        # Collect all uri
-        uris = []
-        for _, info in self.all_song_info.items():
-            uris.append(info["spotify_uri"])
-
-        # Query path
-        query = "https://api.spotify.com/v1/playlists/{}/tracks".format(self.spotify_playlist_id)
-
-        # Header fields
-        header_fields = {
-            "Authorization": "Bearer {}".format(self.spotify_token),
-            "Content-Type": "application/json"
-        }
-
-        # Request body with the list of all songs uri
-        request_body = json.dumps(uris)
-
-        response = requests.post(
-            query,
-            data=request_body,
-            headers=header_fields
-        )
-        
-        response_json = response.json()
-        return response_json
-
-    def createPlaylist(self):
-        """Create a new playlist and add songs from the youtube playlist."""
-
-        # Request path (user's spotify UID)
-        query = "https://api.spotify.com/v1/users/{}/playlists".format(self.spotify_user_id)
-
-        # Header fiels
-        header_fields = {
-            "Authorization": "Bearer {}".format(self.spotify_token),    # info about the client requesting the resource (required by spotify)
-            "Content-Type": "application/json"                       # info about the body of the resource (required by spotify)
-        }
-
-        # Convert Python to JSON (object to send to the server, we can also use the arg "json")
-        request_body = json.dumps({
-            "name": self.spotify_playlist_name,
-            "description": "music discoveries in youtube",
-            "public": True
-        })
-
-        # Response 
-        response = requests.post(
-            query,
-            data=request_body,                                  
-            headers=header_fields
-        )
-
-        # Convert the JSON response into a python dictionnary 
-        response_json = response.json()
-
-        self.spotify_playlist_id = response_json["id"]
-        self.addTrackToPlaylist()
-        
-        print("Creation done!")
-
-    def updatePlaylist(self):
         self.spotify_playlist_id = self.getSpotifyPlaylistId()
-        self.addTrackToPlaylist()
-        print("Update done!")
+        ok = self.replaceTracks()
+        if ok:
+            print("Update done!")
 
 if __name__ == '__main__':
     
@@ -228,7 +236,5 @@ if __name__ == '__main__':
     spotify_playlist_name, youtube_playlist_name, action = sys.argv[1:]
     assert action == "create" or action == "update", "action takes its value in ('create', 'update')"
 
-    cp = PlayList(spotify_playlist_name, youtube_playlist_name)
-    cp.createPlaylist() if action == "create" else cp.updatePlaylist()
-    #cp.getYoutubeVideos()
-    #cp.getSpotifyPlaylistId()
+    cp = Playlist(spotify_playlist_name, youtube_playlist_name)
+    cp.create() if action == "create" else cp.update()
