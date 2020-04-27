@@ -1,6 +1,14 @@
 #!usr/bin/env python3
 
-# Create spotify playlist from my "Music" youtube folder
+# playlist.py -- Create or update a spotify playlist from any youtube folder
+
+# usage: python playlist.py arg[1] arg[2] arg[3] 
+# where 
+#   arg[1] -- the name of the spotify playlist you want to create/update
+#   arg[2] -- the name of the youtube playlist to fetch the songs from
+#   arg[3] -- "create" or "update"
+# attention: case sensitive and no space
+
 
 import json
 import requests
@@ -13,7 +21,7 @@ import googleapiclient.errors
 import youtube_dl
 
 from secrets import spotify_token, spotify_user_id
-from parse_text import deleteKorean
+from parse_text import mainText
 
 class Playlist:
     def __init__(self, spotify_playlist_name, youtube_playlist_name, spotify_playlist_description="music discoveries from youtube"):
@@ -49,7 +57,7 @@ class Playlist:
 
         api_service_name = "youtube"
         api_version = "v3"
-        client_secrets_file = "client_id.json"
+        client_secrets_file = "client_secret.json"
 
         # Get credentials and create an API client
         scopes = ["https://www.googleapis.com/auth/youtube.readonly"]
@@ -100,8 +108,8 @@ class Playlist:
 
             # Use youtube_dl to collect the song name and artist name
             video = youtube_dl.YoutubeDL({}).extract_info(youtube_url, download=False)
-            song_name = deleteKorean(video["track"])
-            artist = deleteKorean(video["artist"])
+            song_name = mainText(video["track"])
+            artist = mainText(video["artist"])
 
             # Save all important information
             if song_name is not None and artist is not None:
@@ -241,6 +249,8 @@ if __name__ == '__main__':
     assert action == "create" or action == "update", "action takes its value in ('create', 'update')"
 
     playlist = Playlist(spotify_playlist_name, youtube_playlist_name)
+
+    
     if action == "create":
         print("would you like to add a description for the new playlist? [y/n]")
         ans = input()
@@ -251,3 +261,4 @@ if __name__ == '__main__':
         playlist.create()
     else:
         playlist.update()
+    
