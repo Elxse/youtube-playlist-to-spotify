@@ -1,5 +1,5 @@
 # YouTube playlist to Spotify
-Just a simple script that generates or update a Spotify playlist based on the songs from any YouTube playlist. <br>
+Just a simple script that generates or updates a Spotify playlist based on the songs from any YouTube playlist. <br>
 Inspired by the amazing tutorial from The Come Up (step-by-step [youtube video] and her [repo]) 
 
 ## Table of Contents
@@ -14,7 +14,7 @@ In addition to automatically creating a new spotify playlist, I've added the fol
 * update an existing spotify playlist
 * since I listen to korean songs, you can sometimes find the song name or artist in both korean and english, but in Spotify they are often listed in english so there is another script to delete any unecessary characters from the song title or artist.
 
-This small and fun project was an opportunity to manipulate Youtube Data API and Spotify Web API for the first time!
+This small and fun project was an opportunity to manipulate the Youtube Data API and Spotify Web API for the first time!
 
 ## Technologies 
 * [Youtube Data API]
@@ -24,7 +24,7 @@ This small and fun project was an opportunity to manipulate Youtube Data API and
 
 ## Local setup
 
-1) Install all dependencies
+1) Install all dependencies <br>
 `pip install -r requirements.txt`
 
 2) Collect your Spotify User ID and Oauth Token from Spotfiy and add it to secrets.py file.
