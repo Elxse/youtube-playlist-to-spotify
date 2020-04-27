@@ -24,7 +24,9 @@ from secrets import spotify_token, spotify_user_id
 from parse_text import mainText
 
 class Playlist:
-    def __init__(self, spotify_playlist_name, youtube_playlist_name, spotify_playlist_description="music discoveries from youtube"):
+    """Create or update a spotify playlist from any youtube folder."""
+
+    def __init__(self, spotify_playlist_name, youtube_playlist_name, spotify_playlist_description="musical discoveries from youtube"):
         self.request_header_fields = {
             "Authorization": "Bearer {}".format(spotify_token),    
             "Content-Type": "application/json" 
@@ -70,7 +72,7 @@ class Playlist:
         return youtube_client
 
     def getYoutubePlaylistID(self):
-        """Get videos from any YouTube folder."""
+        """Get videos from any YouTube playlist."""
 
         request = self.youtube_client.playlists().list(
             part="snippet,contentDetails",
@@ -92,7 +94,7 @@ class Playlist:
         return playlist_id
 
     def getYoutubeVideos(self):
-        """Fetches a playlist of videos from a youtube playlist and creates a dictionary of important song information."""
+        """Fetch videos from a youtube playlist and create a dictionary of important song information."""
 
         request = self.youtube_client.playlistItems().list(
             part="snippet",
@@ -127,6 +129,8 @@ class Playlist:
     # ------ TRACKS ------
     #######################
     def getSpotifyUri(self, song_name, artist):
+        """Get the spotify uri of a particular song."""
+
         # Query parameters
             # q : query keywords
             # type : item types to search across
@@ -134,23 +138,23 @@ class Playlist:
             # offset : the index of the first result to return
         query = "https://api.spotify.com/v1/search?q=track:{0}+artist:{1}&type=track&limit=20&offset=0".format(song_name, artist)
 
-        # Response
         response = requests.get(
             query,
             headers=self.request_header_fields
         )
         response.raise_for_status()
-
+ 
+        # Convert the JSON response into a python dictionnary 
         response_json = response.json()
         songs = response_json["tracks"]["items"]
 
         # Only return the uri of the first song
-        uri = 0
-        if(len(songs) != 0):
-            uri = songs[0]["uri"]
+        uri = songs[0]["uri"] if(songs) else 0
         return uri
 
     def getAllUris(self):
+        """Create a list of all songs spotify uri."""
+
         uris = [info["spotify_uri"] for _, info in self.songs_info.items()]
         return uris
 
@@ -160,17 +164,13 @@ class Playlist:
     def createPlaylist(self):
         """Create a new playlist and return its spotify id."""
 
-        # Request path (user's spotify UID)
         query = "https://api.spotify.com/v1/users/{}/playlists".format(self.spotify_user_id)
-
-        # Convert Python to JSON (object to send to the server, we can also use the arg "json")
         request_body = json.dumps({
             "name": self.spotify_playlist_name,
             "description": self.spotify_playlist_description,
             "public": True
         })
 
-        # Response 
         response = requests.post(
             query,
             data=request_body,                                  
@@ -178,11 +178,12 @@ class Playlist:
         )
         response.raise_for_status()
 
-        # Convert the JSON response into a python dictionnary 
         response_json = response.json()
         return response_json["id"]
 
     def addTracks(self):
+        """Add tracks to a spotify playlist."""
+        
         query = "https://api.spotify.com/v1/playlists/{}/tracks".format(self.spotify_playlist_id)
 
         # Request body with the list of all songs uri
@@ -206,6 +207,8 @@ class Playlist:
     # ------ UPDATE PLAYLIST ------
     ################################
     def getSpotifyPlaylistId(self):
+        """Get spotify playlist id."""
+
         query = "https://api.spotify.com/v1/users/{}/playlists".format(self.spotify_user_id)
 
         response = requests.get(
@@ -227,6 +230,8 @@ class Playlist:
         return playlist_id
 
     def replaceTracks(self):
+        """Replace a spotify playlist's items."""
+
         query = "https://api.spotify.com/v1/playlists/{0}/tracks?uris={1}".format(self.spotify_playlist_id, ",".join(self.songs_uris))
         response = requests.put(
             query,
@@ -249,8 +254,6 @@ if __name__ == '__main__':
     assert action == "create" or action == "update", "action takes its value in ('create', 'update')"
 
     playlist = Playlist(spotify_playlist_name, youtube_playlist_name)
-
-    
     if action == "create":
         print("would you like to add a description for the new playlist? [y/n]")
         ans = input()
