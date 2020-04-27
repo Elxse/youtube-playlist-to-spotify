@@ -1,19 +1,20 @@
-Just a simple script that generates or update a Spotify playlist based on the songs from any YouTube playlist. 
+# YouTube playlist to Spotify
+Just a simple script that generates or update a Spotify playlist based on the songs from any YouTube playlist. <br>
 Inspired by the amazing tutorial from The Come Up (step-by-step [youtube video] and her [repo]) 
 
 ## Table of Contents
 * [Details](#Details)
-* [Technologies](#Requirements)
+* [Technologies](#Technologies)
 * [Setup](#Setup)
 
 ## Details
-In addition to automatically creating a new spotify playlist, I've added the following features :
+In addition to automatically creating a new spotify playlist, I've added the following features:
 * enter the name of the youtube playlist to fetch the songs from
 * enter the name of the new spotify playlist that will be created or the name of an existing one
 * update an existing spotify playlist
 * since I listen to korean songs, you can sometimes find the song name or artist in both korean and english, but in Spotify they are often listed in english so there is another script to delete any unecessary characters from the song title or artist.
 
-This small and fun project was an opportunity to manipulate Youtube Data API and Spotify Web API for the first time.
+This small and fun project was an opportunity to manipulate Youtube Data API and Spotify Web API for the first time!
 
 ## Technologies 
 * [Youtube Data API]
@@ -34,11 +35,9 @@ This small and fun project was an opportunity to manipulate Youtube Data API and
         * playlist-modify-public
         * playlist-modify-private
         * playlist-read-private
-        * playlist-read-collaborative
+        * playlist-read-collaborative <br>
     <img src="images/spotify_scopes.png" alt="Spotify scopes" height="500" width="435"> <br>
     *Note: Spotify OAuth token expires very quickly, if you come across a `KeyError` this could be caused by an expired token. So just generate a new token!*
-
-    
 
 3) Enable Oauth for Youtube and download the JSON file that contains your OAuth 2.0 credentials. Save it as **client_secret.json**   
     * Just follow **Step 1** and **Step 3** to [set up Youtube OAuth].
@@ -50,7 +49,7 @@ This small and fun project was an opportunity to manipulate Youtube Data API and
     * arg[2] -- the name of the youtube playlist to fetch the songs from
     * arg[3] -- "create" or "update"
     
-    <span style="color:red">**Warning: it is case sensitive and names shouldn't have spaces**</span> <br>
+    **Warning: it is case sensitive and names shouldn't have spaces**<br>
     For example `python playlist.py yt-discoveries Music create`
 
     * You'll immediately see `Please visit this URL to authorize this application: <some long url>`
